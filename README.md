@@ -26,8 +26,6 @@ A VEX robotics competition robot built by the Canadian Academy Robotics Team.
 - **R1 Button** - Run intake forward
 - **R2 Button** - Run intake reverse
 
-The robot uses arcade drive for intuitive control with a 5% deadband to prevent motor drift.
-
 ## Competition Modes
 
 ### Autonomous
