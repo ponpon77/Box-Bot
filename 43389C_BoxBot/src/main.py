@@ -27,6 +27,7 @@ right_motor = Motor(Ports.PORT2, GearSetting.RATIO_18_1, True)
 
 # Additional motors 
 intake_motor = Motor(Ports.PORT3, GearSetting.RATIO_18_1, False)
+outtake_motor = Motor(Ports.PORT4, GearSetting.RATIO_18_1, False)
 
 # SmartDrive with GPS
 drivetrain = SmartDrive(left_motor, right_motor, gps, 319.19, 320, 280, MM, 1)
@@ -48,6 +49,24 @@ gps = Gps(Ports.PORT6)
 myVariable = 0
 x_pos = gps.x_position(MM)
 y_pos = gps.y_position(MM)
+teamcolor = Color.RED
+if teamcolor == Color.RED:
+    opponentcolor = Color.BLUE
+else:
+    opponentcolor = Color.RED
+# ============================================================================ #
+#                            Template Functions                                #
+# ============================================================================ #
+
+def color_sort():
+    global myVariable, opponentcolor, teamcolor
+    if color_sensor.color() == opponentcolor:
+        outtake_motor.spin(FORWARD, 100, PERCENT)
+    elif color_sensor.color() == teamcolor:
+        outtake_motor.spin(REVERSE, 100, PERCENT)
+    else:
+        outtake_motor.stop()
+
 
 # ============================================================================ #
 #                           WHEN STARTED                                       #
@@ -117,6 +136,7 @@ def ondriver_drivercontrol_0():
 
         if controller.buttonR1.pressing():
              intake_motor.spin(FORWARD, 100, PERCENT)
+             color_sort()
         elif controller.buttonR2.pressing():
              intake_motor.spin(REVERSE, 100, PERCENT)
         else:
