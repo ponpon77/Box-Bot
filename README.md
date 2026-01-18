@@ -1,6 +1,6 @@
 # 43389C Box Bot
 
-A VEX robotics competition robot built by the Canadian Academy Robotics Team.
+A VEX robotics competition robot code built by the Canadian Academy Robotics Team.
 
 ## Hardware Configuration
 
