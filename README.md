@@ -29,7 +29,7 @@ A VEX robotics competition robot code built by the Canadian Academy Robotics Tea
 ## Competition Modes
 
 ### Autonomous
-The autonomous
+The autonomous code
 
 ### Driver Control
 Full manual control of the robot with driving and intake controls.
