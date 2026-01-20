@@ -3,7 +3,7 @@
 #    Project: 43389C Box Bot                                 
 #    Author:  Canadian Academy Robotics Team
 #    Created: 2026/01/18
-#    Last updated: 2026/01/18
+#    Last updated: 2026/01/20
 #    Version: 1.0.0
 #    Description: 
 #                   
@@ -85,20 +85,35 @@ def when_started():
 # ============================================================================ #
 
 def onauton_autonomous_0():
-    global myVariable,x_pos,y_pos
-    
     brain.screen.clear_screen()
     brain.screen.set_cursor(1, 1)
-    brain.screen.print("Autonomous")
-    
+    brain.screen.print("Autonomous Mode")
 
-    # ===== AUTONOMOUS CODE===== #
+    # Small delay so sensors initialize properly
+    wait(200, MSEC)
+
+    # ===== DRIVETRAIN MOVEMENT =====
     drivetrain.drive_for(FORWARD, 24, INCHES, 50, PERCENT)
     drivetrain.turn_to_heading(90, DEGREES, 30, PERCENT)
-    
-    if color_sensor.color() == Color.RED:
-        brain.screen.print("Red detected!")
-    pass
+
+    # ===== COLOR SENSOR CHECK =====
+    detected_color = color_sensor.color()
+
+    brain.screen.set_cursor(3, 1)
+
+    if detected_color == Color.RED:
+        brain.screen.print("Red detected")
+        # Example action for red
+        drivetrain.drive_for(FORWARD, 12, INCHES, 40, PERCENT)
+
+    elif detected_color == Color.BLUE:
+        brain.screen.print("Blue detected")
+        # Example action for blue
+        drivetrain.drive_for(REVERSE, 12, INCHES, 40, PERCENT)
+
+    else:
+        brain.screen.print("No color detected")
+
 
 
 # ============================================================================ #
