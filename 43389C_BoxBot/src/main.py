@@ -12,7 +12,7 @@ wing_motor = Motor(Ports.PORT10, GearSetting.RATIO_18_1, False)
 
 color_sensor = Optical(Ports.PORT18)
 gps = Gps(Ports.PORT5, 0.0, 0.0, MM, 0)
-drivetrain = SmartDrive(left_motor, right_motor, gps, 319.19, 320, 280, MM, 1)
+drivetrain = DriveTrain(left_motor, right_motor, 319.19, 320, 280, MM, 1)
 
 myVariable = 0
 x_pos = gps.x_position(MM)
@@ -25,12 +25,55 @@ else:
 
 def color_sort():
     global myVariable, opponentcolor, teamcolor
-    if color_sensor.color() == opponentcolor:
+    detected_color = color_sensor.color()
+    if detected_color == opponentcolor:
         outtake_motor.spin(FORWARD, 100, PERCENT)
-    elif color_sensor.color() == teamcolor:
+    elif detected_color == teamcolor:
         outtake_motor.spin(REVERSE, 100, PERCENT)
     else:
         outtake_motor.stop()
+
+def color_sort_loop():
+    while True:
+        color_sort()
+        wait(20, MSEC)
+
+def clamp(value, min_value, max_value):
+    if value < min_value:
+        return min_value
+    if value > max_value:
+        return max_value
+    return value
+
+def normalize_heading(heading):
+    heading = heading % 360
+    if heading < 0:
+        heading += 360
+    return heading
+
+def heading_error(target, current):
+    return (target - current + 540) % 360 - 180
+
+def turn_to_heading_gps(target_heading, timeout_ms=4000):
+    target_heading = normalize_heading(target_heading)
+    start_time = brain.timer.time(MSEC)
+    while True:
+        current_heading = gps.heading()
+        error = heading_error(target_heading, current_heading)
+        if abs(error) <= 2:
+            break
+        speed = min(60, max(15, abs(error) * 0.6))
+        if error > 0:
+            left_motor.spin(FORWARD, speed, PERCENT)
+            right_motor.spin(REVERSE, speed, PERCENT)
+        else:
+            left_motor.spin(REVERSE, speed, PERCENT)
+            right_motor.spin(FORWARD, speed, PERCENT)
+        if brain.timer.time(MSEC) - start_time > timeout_ms:
+            break
+        wait(20, MSEC)
+    left_motor.stop()
+    right_motor.stop()
 
 def when_started():
     global myVariable
@@ -52,17 +95,20 @@ def drive_to_point(target_x, target_y):
     dx = target_x - current_x
     dy = target_y - current_y
     distance = math.sqrt(dx**2 + dy**2)
+    if distance < 5:
+        return
     target_angle_rad = math.atan2(dx, dy)
     target_heading = math.degrees(target_angle_rad)
     if target_heading < 0:
         target_heading += 360
-    drivetrain.turn_to_heading(target_heading, DEGREES)
+    turn_to_heading_gps(target_heading)
     drivetrain.drive_for(FORWARD, distance, MM)
 
 def onauton_autonomous_0():
     brain.screen.clear_screen()
     brain.screen.set_cursor(1, 1)
     brain.screen.print("Autonomous")
+    color_sort_task = Thread(color_sort_loop)
     wait(200, MSEC)
     drivetrain.set_drive_velocity(50, PERCENT)
     drivetrain.set_turn_velocity(30, PERCENT)
@@ -73,6 +119,7 @@ def onauton_autonomous_0():
     drive_to_point(target_x, target_y)
     intake_motor.spin(FORWARD, 100, PERCENT)
     brain.screen.print("Auton Complete")
+    color_sort_task.stop()
 
 def ondriver_drivercontrol_0():
     global myVariable
@@ -90,6 +137,8 @@ def ondriver_drivercontrol_0():
             left_speed = 0
         if abs(right_speed) < 5:
             right_speed = 0
+        left_speed = clamp(left_speed, -100, 100)
+        right_speed = clamp(right_speed, -100, 100)
         left_motor.spin(FORWARD, left_speed, PERCENT)
         right_motor.spin(FORWARD, right_speed, PERCENT)
         if controller.buttonL2.pressing():
@@ -103,7 +152,7 @@ def ondriver_drivercontrol_0():
         elif controller.buttonR2.pressing():
             outtake_motor.spin(REVERSE, 100, PERCENT)
         else:
-            outtake_motor.stop()
+            color_sort()
         if controller.buttonX.pressing():
             wing_motor.spin(FORWARD, 100, PERCENT)
         elif controller.buttonY.pressing():
@@ -124,5 +173,5 @@ def vexcode_driver_function():
         wait( 10, MSEC )
     driver_control_task_0.stop()
 
-comp = Competition( vexcode_driver_function, vexcode_auton_function )
+competition = Competition( vexcode_driver_function, vexcode_auton_function )
 when_started()
