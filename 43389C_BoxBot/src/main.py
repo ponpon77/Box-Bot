@@ -1,50 +1,18 @@
-# ----------------------------------------------------------------------------
-#                                                                            
-#    Project: 43389C Box Bot                                 
-#    Author:  Canadian Academy Robotics Team
-#    Created: 2026/01/18
-#    Last updated: 2026/01/20
-#    Version: 1.0.0
-#    Description: 
-#                   
-#    Configuration: 
-#                   
-#                                                                           
-# ----------------------------------------------------------------------------
-
 from vex import *
 
 brain = Brain()
 controller = Controller()
 
-# ============================================================================ #
-#                           MOTOR CONFIGURATION                                #
-# ============================================================================ #
+left_motor = Motor(Ports.PORT11, GearSetting.RATIO_18_1, False)
+right_motor = Motor(Ports.PORT20, GearSetting.RATIO_18_1, True)
 
-# Drive motors 
-left_motor = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
-right_motor = Motor(Ports.PORT2, GearSetting.RATIO_18_1, True)
+intake_motor = Motor(Ports.PORT19, GearSetting.RATIO_18_1, False)
+outtake_motor = Motor(Ports.PORT1, GearSetting.RATIO_18_1, False)
+wing_motor = Motor(Ports.PORT10, GearSetting.RATIO_18_1, False)
 
-# Additional motors 
-intake_motor = Motor(Ports.PORT3, GearSetting.RATIO_18_1, False)
-outtake_motor = Motor(Ports.PORT4, GearSetting.RATIO_18_1, False)
-
-# SmartDrive with GPS
+color_sensor = Optical(Ports.PORT18)
+gps = Gps(Ports.PORT5, 0.0, 0.0, MM, 0)
 drivetrain = SmartDrive(left_motor, right_motor, gps, 319.19, 320, 280, MM, 1)
-
-# ============================================================================ #
-#                          SENSOR CONFIGURATION                                #
-# ============================================================================ #
-
-# Color sensor
-color_sensor = Optical(Ports.PORT5)
-
-# GPS sensor
-gps = Gps(Ports.PORT6)
-
-# ============================================================================ #
-#                            GLOBAL VARIABLES                                  #
-# ============================================================================ #
 
 myVariable = 0
 x_pos = gps.x_position(MM)
@@ -54,9 +22,6 @@ if teamcolor == Color.RED:
     opponentcolor = Color.BLUE
 else:
     opponentcolor = Color.RED
-# ============================================================================ #
-#                            Template Functions                                #
-# ============================================================================ #
 
 def color_sort():
     global myVariable, opponentcolor, teamcolor
@@ -67,101 +32,85 @@ def color_sort():
     else:
         outtake_motor.stop()
 
-
-# ============================================================================ #
-#                           WHEN STARTED                                       #
-# ============================================================================ #
-
 def when_started():
     global myVariable
     brain.screen.clear_screen()
     brain.screen.set_cursor(1, 1)
-    brain.screen.print("Ready to start")
+    brain.screen.print("GPS Calibrating...")
     gps.calibrate()
+    while gps.is_calibrating():
+        wait(100, MSEC)
+    brain.screen.clear_screen()
+    wait(1, SECONDS)
+    brain.screen.clear_screen()
+    brain.screen.print("Ready")
 
-
-# ============================================================================ #
-#                            AUTONOMOUS                                        #
-# ============================================================================ #
+def drive_to_point(target_x, target_y):
+    import math
+    current_x = gps.x_position(MM)
+    current_y = gps.y_position(MM)
+    dx = target_x - current_x
+    dy = target_y - current_y
+    distance = math.sqrt(dx**2 + dy**2)
+    target_angle_rad = math.atan2(dx, dy)
+    target_heading = math.degrees(target_angle_rad)
+    if target_heading < 0:
+        target_heading += 360
+    drivetrain.turn_to_heading(target_heading, DEGREES)
+    drivetrain.drive_for(FORWARD, distance, MM)
 
 def onauton_autonomous_0():
     brain.screen.clear_screen()
     brain.screen.set_cursor(1, 1)
-    brain.screen.print("Autonomous Mode")
-
-    # Small delay so sensors initialize properly
+    brain.screen.print("Autonomous")
     wait(200, MSEC)
-
-    # ===== DRIVETRAIN MOVEMENT =====
-    drivetrain.drive_for(FORWARD, 24, INCHES, 50, PERCENT)
-    drivetrain.turn_to_heading(90, DEGREES, 30, PERCENT)
-
-    # ===== COLOR SENSOR CHECK =====
-    detected_color = color_sensor.color()
-
-    brain.screen.set_cursor(3, 1)
-
-    if detected_color == Color.RED:
-        brain.screen.print("Red detected")
-        # Example action for red
-        drivetrain.drive_for(FORWARD, 12, INCHES, 40, PERCENT)
-
-    elif detected_color == Color.BLUE:
-        brain.screen.print("Blue detected")
-        # Example action for blue
-        drivetrain.drive_for(REVERSE, 12, INCHES, 40, PERCENT)
-
-    else:
-        brain.screen.print("No color detected")
-
-
-
-# ============================================================================ #
-#                          DRIVER CONTROL                                      #
-# ============================================================================ #
+    drivetrain.set_drive_velocity(50, PERCENT)
+    drivetrain.set_turn_velocity(30, PERCENT)
+    start_x = gps.x_position(MM)
+    start_y = gps.y_position(MM)
+    target_x = start_x + 0
+    target_y = start_y + 900
+    drive_to_point(target_x, target_y)
+    intake_motor.spin(FORWARD, 100, PERCENT)
+    brain.screen.print("Auton Complete")
 
 def ondriver_drivercontrol_0():
     global myVariable
     brain.screen.clear_screen()
     brain.screen.set_cursor(1, 1)
     brain.screen.print("Driver Control")
-    
-    # Set drivetrain velocities
     drivetrain.set_drive_velocity(100, PERCENT)
     drivetrain.set_turn_velocity(100, PERCENT)
-    
     while True:
-        # ===== DRIVETRAIN CONTROL (Arcade Drive) ===== #
         forward = controller.axis3.position()
         turn = controller.axis1.position()
-        
-        # Calculate left and right motor speeds
         left_speed = forward + turn
         right_speed = forward - turn
-        
-        # Deadband to prevent drift
         if abs(left_speed) < 5:
             left_speed = 0
         if abs(right_speed) < 5:
             right_speed = 0
-        
         left_motor.spin(FORWARD, left_speed, PERCENT)
         right_motor.spin(FORWARD, right_speed, PERCENT)
-        
-
-        if controller.buttonR1.pressing():
-             intake_motor.spin(FORWARD, 100, PERCENT)
-             color_sort()
-        elif controller.buttonR2.pressing():
-             intake_motor.spin(REVERSE, 100, PERCENT)
+        if controller.buttonL2.pressing():
+            intake_motor.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonL1.pressing():
+            intake_motor.spin(REVERSE, 100, PERCENT)
         else:
             intake_motor.stop()
-        
-
-
-# ============================================================================ #
-#                      COMPETITION CONTROL FUNCTIONS                           #
-# ============================================================================ #
+        if controller.buttonR1.pressing():
+            outtake_motor.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonR2.pressing():
+            outtake_motor.spin(REVERSE, 100, PERCENT)
+        else:
+            outtake_motor.stop()
+        if controller.buttonX.pressing():
+            wing_motor.spin(FORWARD, 100, PERCENT)
+        elif controller.buttonY.pressing():
+            wing_motor.spin(REVERSE, 100, PERCENT)
+        else:
+            wing_motor.stop()
+        wait(20, MSEC)
 
 def vexcode_auton_function():
     auton_task_0 = Thread( onauton_autonomous_0 )
@@ -169,17 +118,11 @@ def vexcode_auton_function():
         wait( 10, MSEC )
     auton_task_0.stop()
 
-
 def vexcode_driver_function():
     driver_control_task_0 = Thread( ondriver_drivercontrol_0 )
     while( competition.is_driver_control() and competition.is_enabled() ):
         wait( 10, MSEC )
     driver_control_task_0.stop()
-
-
-# ============================================================================ #
-#                              MAIN                                            #
-# ============================================================================ #
 
 comp = Competition( vexcode_driver_function, vexcode_auton_function )
 when_started()
